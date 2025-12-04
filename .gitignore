@@ -35,7 +35,7 @@ build/
 ### secret ###
 src/main/resources/application.yml
 src/main/resources/*.yml
-application.properties
+src/main/resources/application.properties
 .env
 *.key
 docker-compose.yml
