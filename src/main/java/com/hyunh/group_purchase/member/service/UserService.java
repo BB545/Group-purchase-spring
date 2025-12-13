@@ -31,6 +31,7 @@ public class UserService {
                 .email(request.getEmail())
                 .nickname(request.getNickname())
                 .password(encodedPassword)
+                .role("ROLE_USER")
                 .build();
 
         // DB 저장

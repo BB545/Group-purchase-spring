@@ -27,6 +27,9 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String nickname;
 
+    @Column(nullable = false)
+    private String role;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return null; // 회원, 관리자 구분 없는 일반적인 형태
