@@ -23,6 +23,24 @@ public class InventoryService {
         return inventoryRepository.save(newProduct);
     }
 
+    public Inventory updateProduct(Long id, InventoryRequest request) {
+        Inventory product = inventoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+
+        product.setProductName(request.getProductName());
+        product.setTotalStock(request.getTotalStock());
+        product.setRemainStock(request.getTotalStock());
+
+        return inventoryRepository.save(product);
+    }
+
+    public void deleteProduct(Long id) {
+        Inventory product = inventoryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+
+        inventoryRepository.delete(product);
+    }
+
     public Optional<Inventory> getProduct(Long id) {
         return inventoryRepository.findById(id);
     }

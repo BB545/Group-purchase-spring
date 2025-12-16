@@ -25,4 +25,18 @@ public class InventoryController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateProduct(
+            @PathVariable Long id,
+            @RequestBody InventoryRequest request) {
+        Inventory updated = inventoryService.updateProduct(id, request);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
+        inventoryService.deleteProduct(id);
+        return ResponseEntity.ok("상품이 삭제되었습니다.");
+    }
 }
