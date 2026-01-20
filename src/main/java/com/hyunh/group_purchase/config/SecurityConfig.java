@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/users/register", "/users/login").permitAll()
                         .requestMatchers("/inventory/create").hasRole("ADMIN")
+                        .requestMatchers("/reservations/admin/all").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/inventory/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/inventory/*").hasRole("ADMIN")
                         .anyRequest().authenticated()

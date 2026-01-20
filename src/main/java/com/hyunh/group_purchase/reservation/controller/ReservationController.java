@@ -33,4 +33,17 @@ public class ReservationController {
 
         return ResponseEntity.ok("예약 요청 완료! 결제 대기 상태입니다.");
     }
+
+    @GetMapping("/my")
+    public ResponseEntity<?> getMyReservations(@RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        String email = jwtUtil.getEmailFromToken(jwt);
+
+        return ResponseEntity.ok(reservationService.getMyReservations(email));
+    }
+
+    @GetMapping("/admin/all")
+    public ResponseEntity<?> getAllReservations(@RequestParam(required = false) String status) {
+        return ResponseEntity.ok(reservationService.getAllReservations(status));
+    }
 }
