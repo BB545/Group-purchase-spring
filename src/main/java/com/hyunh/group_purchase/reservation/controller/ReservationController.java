@@ -1,0 +1,30 @@
+package com.hyunh.group_purchase.reservation.controller;
+
+import com.hyunh.group_purchase.common.util.JwtUtil;
+import com.hyunh.group_purchase.reservation.service.ReservationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/reservations")
+public class ReservationController {
+    private final ReservationService reservationService;
+    private final JwtUtil jwtUtil;
+
+    @PostMapping("/{productId}")
+    public ResponseEntity<?> reserve(@PathVariable Long productId,
+                                     @RequestHeader("Authorization") String token) {
+        String jwt = token.substring(7);
+        String userEmail = jwtUtil.getEmailFromToken(jwt);
+
+        boolean success = reservationService.reservationProduct(productId, userEmail);
+
+        if (!success) {
+            return ResponseEntity.badRequest().body("재고가 부족합니다.");
+        }
+
+        return ResponseEntity.ok("예약 요청 완료! 결제 대기 상태입니다.");
+    }
+}
