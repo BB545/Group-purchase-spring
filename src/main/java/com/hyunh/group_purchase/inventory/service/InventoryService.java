@@ -4,6 +4,7 @@ import com.hyunh.group_purchase.inventory.dto.InventoryRequest;
 import com.hyunh.group_purchase.inventory.entity.Inventory;
 import com.hyunh.group_purchase.inventory.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -12,6 +13,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class InventoryService {
     private final InventoryRepository inventoryRepository;
+    private final StringRedisTemplate redisTemplate;
 
     public Inventory createProduct(InventoryRequest request) {
         Inventory newProduct = Inventory.builder()
@@ -20,7 +22,26 @@ public class InventoryService {
                 .remainStock(request.getTotalStock())
                 .build();
 
-        return inventoryRepository.save(newProduct);
+        Inventory saved = inventoryRepository.save(newProduct);
+
+        String redisKey = "stock:" + saved.getId();
+        redisTemplate.opsForValue().set(redisKey, String.valueOf(saved.getTotalStock()));
+
+        return saved;
+    }
+
+    public boolean decreaseStock(Long productId) {
+        String key = "stock:" + productId;
+
+        Long remain = redisTemplate.opsForValue().decrement(key);
+
+        if (remain != null && remain >= 0) {
+            return true;
+        }
+
+        // 재고 부족 -> 롤백
+        redisTemplate.opsForValue().increment(key);
+        return false;
     }
 
     public Inventory updateProduct(Long id, InventoryRequest request) {
