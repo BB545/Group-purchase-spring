@@ -2,6 +2,7 @@ package com.hyunh.group_purchase.reservation.consumer;
 
 import com.hyunh.group_purchase.inventory.repository.InventoryRepository;
 import com.hyunh.group_purchase.reservation.entity.Reservation;
+import com.hyunh.group_purchase.reservation.entity.ReservationStatus;
 import com.hyunh.group_purchase.reservation.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -20,20 +21,29 @@ public class ReservationConsumer {
         String[] split = message.split(":");
         String email = split[0];
         Long productId = Long.parseLong(split[1]);
+        int quantity = Integer.parseInt(split[2]);
 
         Reservation reservation = Reservation.builder()
                 .userEmail(email)
                 .productId(productId)
-                .status("Waiting")
+                .quantity(quantity)
+                .status(ReservationStatus.WAITING)
                 .build();
 
         reservationRepository.save(reservation);
 
         inventoryRepository.findById(productId).ifPresent(inventory -> {
-            inventory.setRemainStock(inventory.getRemainStock() - 1);
-            inventoryRepository.save(inventory);
+            if(inventory.getRemainStock() >= quantity) {
+                inventory.setRemainStock(inventory.getRemainStock() - quantity);
+                inventoryRepository.save(inventory);
+                reservation.setStatus(ReservationStatus.CONFIRMED);
+            } else {
+                reservation.setStatus(ReservationStatus.OUT_OF_STOCK);
+            }
+
+            reservationRepository.save(reservation);
         });
 
-        System.out.println("예약 저장 완료 + remainStock 감소 완료");
+        System.out.println("예약 처리 완료");
     }
 }

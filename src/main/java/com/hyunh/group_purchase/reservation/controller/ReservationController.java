@@ -1,6 +1,7 @@
 package com.hyunh.group_purchase.reservation.controller;
 
 import com.hyunh.group_purchase.common.util.JwtUtil;
+import com.hyunh.group_purchase.reservation.dto.ReservationRequest;
 import com.hyunh.group_purchase.reservation.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,11 +16,16 @@ public class ReservationController {
 
     @PostMapping("/{productId}")
     public ResponseEntity<?> reserve(@PathVariable Long productId,
+                                     @RequestBody ReservationRequest request,
                                      @RequestHeader("Authorization") String token) {
         String jwt = token.substring(7);
         String userEmail = jwtUtil.getEmailFromToken(jwt);
 
-        boolean success = reservationService.reservationProduct(productId, userEmail);
+        boolean success = reservationService.reservationProduct(
+                productId,
+                request.getQuantity(),
+                userEmail
+        );
 
         if (!success) {
             return ResponseEntity.badRequest().body("재고가 부족합니다.");

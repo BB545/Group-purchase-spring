@@ -11,14 +11,14 @@ public class ReservationService {
     private final InventoryService inventoryService;
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public boolean reservationProduct(Long productId, String userEmail) {
-        boolean success = inventoryService.decreaseStock(productId);
+    public boolean reservationProduct(Long productId, int quantity, String userEmail) {
+        boolean canReserve = inventoryService.checkAndReserve(productId, quantity);
 
-        if(!success) {
+        if(!canReserve) {
             return false;
         }
 
-        String message = userEmail + ":" + productId;
+        String message = userEmail + ":" + productId + ":" + quantity;
         kafkaTemplate.send("inventory-reservation", message);
 
         return true;

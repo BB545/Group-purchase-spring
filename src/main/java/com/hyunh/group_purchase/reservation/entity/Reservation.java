@@ -19,7 +19,10 @@ public class Reservation {
     private String userEmail;
     private Long productId;
 
-    private String status;
+    private int quantity;
+
+    @Enumerated(EnumType.STRING)
+    private ReservationStatus status;
 
     private LocalDateTime createdAt;
 
@@ -27,7 +30,7 @@ public class Reservation {
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) {
-            this.status = "Waiting";
+            this.status = ReservationStatus.WAITING;
         }
     }
 }

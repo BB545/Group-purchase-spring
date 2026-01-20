@@ -15,6 +15,10 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final StringRedisTemplate redisTemplate;
 
+    private String stockKey(Long productId) {
+        return "stock:" + productId;
+    }
+
     public Inventory createProduct(InventoryRequest request) {
         Inventory newProduct = Inventory.builder()
                 .productName(request.getProductName())
@@ -24,24 +28,34 @@ public class InventoryService {
 
         Inventory saved = inventoryRepository.save(newProduct);
 
-        String redisKey = "stock:" + saved.getId();
-        redisTemplate.opsForValue().set(redisKey, String.valueOf(saved.getTotalStock()));
+        redisTemplate.opsForValue().set(stockKey(saved.getId()), String.valueOf(saved.getTotalStock()));
 
         return saved;
     }
 
-    public boolean decreaseStock(Long productId) {
-        String key = "stock:" + productId;
+    public boolean checkAndReserve(Long productId, int quantity) {
+        String key = stockKey(productId);
 
-        Long remain = redisTemplate.opsForValue().decrement(key);
+        String stockStr = redisTemplate.opsForValue().get(key);
 
-        if (remain != null && remain >= 0) {
-            return true;
+        if (stockStr == null) {
+            int dbStock = inventoryRepository.findById(productId)
+                    .map(Inventory::getRemainStock)
+                    .orElse(0);
+
+            redisTemplate.opsForValue().set(key, String.valueOf(dbStock));
+            stockStr = String.valueOf(dbStock);
         }
 
-        // 재고 부족 -> 롤백
-        redisTemplate.opsForValue().increment(key);
-        return false;
+        int stock = Integer.parseInt((stockStr));
+
+        if (stock < quantity) {
+            return false;
+        }
+
+        Long newStock = redisTemplate.opsForValue().decrement(key, quantity);
+
+        return newStock != null && newStock >= 0;
     }
 
     public Inventory updateProduct(Long id, InventoryRequest request) {
@@ -52,7 +66,19 @@ public class InventoryService {
         product.setTotalStock(request.getTotalStock());
         product.setRemainStock(request.getTotalStock());
 
-        return inventoryRepository.save(product);
+        Inventory saved = inventoryRepository.save(product);
+
+        redisTemplate.opsForValue().set(stockKey(id), String.valueOf(request.getTotalStock()));
+
+        return saved;
+    }
+
+    public void decreaseStockInDB(Long productId, int quantity) {
+        inventoryRepository.findById(productId).ifPresent(inventory -> {
+            int newRemain = inventory.getRemainStock() - quantity;
+            inventory.setRemainStock(Math.max(newRemain, 0));
+            inventoryRepository.save(inventory);
+        });
     }
 
     public void deleteProduct(Long id) {
@@ -60,6 +86,7 @@ public class InventoryService {
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
 
         inventoryRepository.delete(product);
+        redisTemplate.delete(stockKey(id));
     }
 
     public Optional<Inventory> getProduct(Long id) {
