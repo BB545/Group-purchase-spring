@@ -92,4 +92,15 @@ public class InventoryService {
     public Optional<Inventory> getProduct(Long id) {
         return inventoryRepository.findById(id);
     }
+
+    public void restoreStock(Long productId, int quantity) {
+        String redisKey = "stock:" + productId;
+
+        redisTemplate.opsForValue().increment(redisKey, quantity);
+
+        inventoryRepository.findById(productId).ifPresent(inventory -> {
+            inventory.setRemainStock(inventory.getRemainStock() + quantity);
+            inventoryRepository.save(inventory);
+        });
+    }
 }

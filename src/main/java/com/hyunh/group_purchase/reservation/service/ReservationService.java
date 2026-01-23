@@ -41,4 +41,24 @@ public class ReservationService {
         ReservationStatus st = ReservationStatus.valueOf(status.toUpperCase());
         return reservationRepository.findByStatus(st);
     }
+
+    public boolean cancelReservations(Long reservationId, String userEmail) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("예약을 찾을 수 없습니다."));
+
+        if (!reservation.getUserEmail().equals(userEmail)) {
+            return false;
+        }
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            return false;
+        }
+
+        inventoryService.restoreStock(reservation.getProductId(), reservation.getQuantity());
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservationRepository.save(reservation);
+
+        return true;
+    }
 }

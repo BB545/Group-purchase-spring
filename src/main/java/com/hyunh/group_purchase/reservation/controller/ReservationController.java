@@ -46,4 +46,21 @@ public class ReservationController {
     public ResponseEntity<?> getAllReservations(@RequestParam(required = false) String status) {
         return ResponseEntity.ok(reservationService.getAllReservations(status));
     }
+
+    @DeleteMapping("/{reservationId}")
+    public ResponseEntity<?> cancelReservations(
+            @PathVariable Long reservationId,
+            @RequestHeader("Authorization") String token
+    ) {
+        String jwt = token.substring(7);
+        String userEmail = jwtUtil.getEmailFromToken(jwt);
+
+        boolean success = reservationService.cancelReservations(reservationId, userEmail);
+
+        if (!success) {
+            return ResponseEntity.badRequest().body("예약 취소 실패: 권한이 없거나 이미 취소된 예약입니다.");
+        }
+
+        return ResponseEntity.ok("예약이 취소되었습니다.");
+    }
 }
