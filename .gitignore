@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### secret ###
+src/main/resources/application.yml
+src/main/resources/*.yml
+src/main/resources/application.properties
+.env
+*.key
+docker-compose.yml
