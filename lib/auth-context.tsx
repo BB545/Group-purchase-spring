@@ -1,17 +1,18 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { store } from "./store"
 
-interface User {
+export interface AuthUser {
   email: string
   nickname: string
-  role: string
+  role: "USER" | "ADMIN"
 }
 
 interface AuthContextType {
-  user: User | null
-  token: string | null
-  login: (token: string, user: User) => void
+  user: AuthUser | null
+  login: (email: string, password: string) => void
+  register: (email: string, password: string, nickname: string) => void
   logout: () => void
   isLoading: boolean
 }
@@ -19,36 +20,39 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token")
-    const storedUser = localStorage.getItem("user")
-    if (storedToken && storedUser) {
-      setToken(storedToken)
+    const storedUser = localStorage.getItem("currentUser")
+    if (storedUser) {
       setUser(JSON.parse(storedUser))
     }
     setIsLoading(false)
   }, [])
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken)
-    setUser(newUser)
-    localStorage.setItem("token", newToken)
-    localStorage.setItem("user", JSON.stringify(newUser))
+  const login = (email: string, password: string) => {
+    const foundUser = store.loginUser(email, password)
+    const authUser: AuthUser = {
+      email: foundUser.email,
+      nickname: foundUser.nickname,
+      role: foundUser.role,
+    }
+    setUser(authUser)
+    localStorage.setItem("currentUser", JSON.stringify(authUser))
+  }
+
+  const register = (email: string, password: string, nickname: string) => {
+    store.registerUser(email, password, nickname)
   }
 
   const logout = () => {
-    setToken(null)
     setUser(null)
-    localStorage.removeItem("token")
-    localStorage.removeItem("user")
+    localStorage.removeItem("currentUser")
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

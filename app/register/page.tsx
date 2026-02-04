@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { registerUser } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [nickname, setNickname] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const { register } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -35,7 +36,7 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      await registerUser({ email, password, nickname })
+      register(email, password, nickname)
       toast({
         title: "회원가입 완료",
         description: "로그인 페이지로 이동합니다.",

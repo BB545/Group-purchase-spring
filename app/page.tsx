@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AuthProvider } from "@/lib/auth-context"
+
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -175,9 +175,5 @@ function HomePage() {
 }
 
 export default function Page() {
-  return (
-    <AuthProvider>
-      <HomePage />
-    </AuthProvider>
-  )
+  return <HomePage />
 }

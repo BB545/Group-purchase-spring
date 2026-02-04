@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth-context"
+import { store, type Product, type Reservation } from "@/lib/store"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,7 +52,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { createProduct, updateProduct, deleteProduct, type Product, type Reservation } from "@/lib/api"
 import {
   LayoutDashboard,
   Package,
@@ -60,7 +60,6 @@ import {
   Pencil,
   Trash2,
   Loader2,
-  Users,
   TrendingUp,
   Clock,
   CheckCircle,
@@ -68,119 +67,6 @@ import {
   AlertTriangle,
   ShieldAlert,
 } from "lucide-react"
-
-// 데모용 상품 데이터
-const DEMO_PRODUCTS: Product[] = [
-  {
-    id: 1,
-    productName: "프리미엄 무선 이어폰",
-    totalStock: 100,
-    remainStock: 45,
-    createdAt: "2026-01-15T10:00:00",
-    updatedAt: "2026-02-01T14:30:00",
-  },
-  {
-    id: 2,
-    productName: "스마트 워치 Pro",
-    totalStock: 50,
-    remainStock: 12,
-    createdAt: "2026-01-20T09:00:00",
-    updatedAt: "2026-02-02T11:00:00",
-  },
-  {
-    id: 3,
-    productName: "휴대용 블루투스 스피커",
-    totalStock: 200,
-    remainStock: 180,
-    createdAt: "2026-01-25T15:00:00",
-    updatedAt: "2026-02-03T16:00:00",
-  },
-  {
-    id: 4,
-    productName: "무선 충전 패드",
-    totalStock: 150,
-    remainStock: 0,
-    createdAt: "2026-01-28T12:00:00",
-    updatedAt: "2026-02-04T10:00:00",
-  },
-  {
-    id: 5,
-    productName: "노이즈 캔슬링 헤드폰",
-    totalStock: 80,
-    remainStock: 35,
-    createdAt: "2026-02-01T08:00:00",
-    updatedAt: "2026-02-04T09:00:00",
-  },
-  {
-    id: 6,
-    productName: "미니 프로젝터",
-    totalStock: 30,
-    remainStock: 8,
-    createdAt: "2026-02-02T14:00:00",
-    updatedAt: "2026-02-04T15:00:00",
-  },
-]
-
-// 데모용 전체 예약 데이터
-const DEMO_ALL_RESERVATIONS: Reservation[] = [
-  {
-    id: 1,
-    userEmail: "user1@example.com",
-    productId: 1,
-    quantity: 2,
-    status: "WAITING",
-    createdAt: "2026-02-04T10:30:00",
-  },
-  {
-    id: 2,
-    userEmail: "user2@example.com",
-    productId: 2,
-    quantity: 1,
-    status: "CONFIRMED",
-    createdAt: "2026-02-03T14:00:00",
-  },
-  {
-    id: 3,
-    userEmail: "user1@example.com",
-    productId: 5,
-    quantity: 3,
-    status: "WAITING",
-    createdAt: "2026-02-03T09:15:00",
-  },
-  {
-    id: 4,
-    userEmail: "user3@example.com",
-    productId: 3,
-    quantity: 1,
-    status: "CANCELLED",
-    createdAt: "2026-02-02T16:45:00",
-  },
-  {
-    id: 5,
-    userEmail: "user2@example.com",
-    productId: 1,
-    quantity: 5,
-    status: "CONFIRMED",
-    createdAt: "2026-02-02T11:20:00",
-  },
-  {
-    id: 6,
-    userEmail: "user4@example.com",
-    productId: 4,
-    quantity: 2,
-    status: "OUT_OF_STOCK",
-    createdAt: "2026-02-01T15:30:00",
-  },
-]
-
-const PRODUCT_NAMES: Record<number, string> = {
-  1: "프리미엄 무선 이어폰",
-  2: "스마트 워치 Pro",
-  3: "휴대용 블루투스 스피커",
-  4: "무선 충전 패드",
-  5: "노이즈 캔슬링 헤드폰",
-  6: "미니 프로젝터",
-}
 
 const STATUS_CONFIG = {
   WAITING: {
@@ -206,14 +92,14 @@ const STATUS_CONFIG = {
 }
 
 function AdminContent() {
-  const [products, setProducts] = useState<Product[]>(DEMO_PRODUCTS)
-  const [reservations, setReservations] = useState<Reservation[]>(DEMO_ALL_RESERVATIONS)
+  const [products, setProducts] = useState<Product[]>([])
+  const [reservations, setReservations] = useState<Reservation[]>([])
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [productForm, setProductForm] = useState({ productName: "", totalStock: "" })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { user, token, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -223,21 +109,28 @@ function AdminContent() {
     }
   }, [user, isLoading, router])
 
+  useEffect(() => {
+    setProducts(store.getProducts())
+    setReservations(store.getAllReservations())
+    
+    const unsubscribe = store.subscribe(() => {
+      setProducts(store.getProducts())
+      setReservations(store.getAllReservations())
+    })
+    return unsubscribe
+  }, [])
+
   const filteredReservations = reservations.filter((reservation) => {
     if (statusFilter === "all") return true
     return reservation.status === statusFilter
   })
 
-  const handleCreateProduct = async () => {
-    if (!token || !productForm.productName || !productForm.totalStock) return
+  const handleCreateProduct = () => {
+    if (!productForm.productName || !productForm.totalStock) return
 
     setIsSubmitting(true)
     try {
-      const newProduct = await createProduct(token, {
-        productName: productForm.productName,
-        totalStock: parseInt(productForm.totalStock),
-      })
-      setProducts((prev) => [...prev, newProduct])
+      store.createProduct(productForm.productName, parseInt(productForm.totalStock))
       setProductForm({ productName: "", totalStock: "" })
       setIsCreateDialogOpen(false)
       toast({
@@ -255,18 +148,12 @@ function AdminContent() {
     }
   }
 
-  const handleUpdateProduct = async () => {
-    if (!token || !editingProduct || !productForm.productName || !productForm.totalStock) return
+  const handleUpdateProduct = () => {
+    if (!editingProduct || !productForm.productName || !productForm.totalStock) return
 
     setIsSubmitting(true)
     try {
-      const updated = await updateProduct(token, editingProduct.id, {
-        productName: productForm.productName,
-        totalStock: parseInt(productForm.totalStock),
-      })
-      setProducts((prev) =>
-        prev.map((p) => (p.id === editingProduct.id ? updated : p))
-      )
+      store.updateProduct(editingProduct.id, productForm.productName, parseInt(productForm.totalStock))
       setEditingProduct(null)
       setProductForm({ productName: "", totalStock: "" })
       toast({
@@ -284,12 +171,9 @@ function AdminContent() {
     }
   }
 
-  const handleDeleteProduct = async (productId: number) => {
-    if (!token) return
-
+  const handleDeleteProduct = (productId: number) => {
     try {
-      await deleteProduct(token, productId)
-      setProducts((prev) => prev.filter((p) => p.id !== productId))
+      store.deleteProduct(productId)
       toast({
         title: "상품 삭제 완료",
         description: "상품이 삭제되었습니다.",
@@ -298,6 +182,22 @@ function AdminContent() {
       toast({
         title: "삭제 실패",
         description: error instanceof Error ? error.message : "상품 삭제에 실패했습니다.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleConfirmReservation = (reservationId: number) => {
+    try {
+      store.confirmReservation(reservationId)
+      toast({
+        title: "예약 확정 완료",
+        description: "예약이 확정되었습니다.",
+      })
+    } catch (error) {
+      toast({
+        title: "확정 실패",
+        description: error instanceof Error ? error.message : "예약 확정에 실패했습니다.",
         variant: "destructive",
       })
     }
@@ -323,9 +223,24 @@ function AdminContent() {
     return null
   }
 
+  if (user.role !== "ADMIN") {
+    return (
+      <div className="min-h-screen flex flex-col bg-muted/30">
+        <Header />
+        <main className="flex-1 container py-8">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <ShieldAlert className="h-16 w-16 text-destructive mb-4" />
+            <h2 className="text-xl font-semibold mb-2">접근 권한이 없습니다</h2>
+            <p className="text-muted-foreground mb-4">관리자만 접근할 수 있는 페이지입니다.</p>
+            <Button onClick={() => router.push("/products")}>상품 목록으로</Button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   // 통계 계산
   const totalProducts = products.length
-  const totalStock = products.reduce((sum, p) => sum + p.totalStock, 0)
   const totalSold = products.reduce((sum, p) => sum + (p.totalStock - p.remainStock), 0)
   const totalReservations = reservations.length
   const waitingReservations = reservations.filter((r) => r.status === "WAITING").length
@@ -496,7 +411,7 @@ function AdminContent() {
                                 product.remainStock === 0
                                   ? "text-destructive font-medium"
                                   : product.remainStock <= 10
-                                  ? "text-warning font-medium"
+                                  ? "text-orange-500 font-medium"
                                   : ""
                               }
                             >
@@ -612,7 +527,9 @@ function AdminContent() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle>전체 예약 목록</CardTitle>
-                    <CardDescription>{filteredReservations.length}개의 예약</CardDescription>
+                    <CardDescription>
+                      {filteredReservations.length}개의 예약
+                    </CardDescription>
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-40">
@@ -639,6 +556,7 @@ function AdminContent() {
                         <TableHead className="text-center">수량</TableHead>
                         <TableHead>상태</TableHead>
                         <TableHead>예약일</TableHead>
+                        <TableHead className="text-right">작업</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -650,9 +568,7 @@ function AdminContent() {
                           <TableRow key={reservation.id}>
                             <TableCell className="font-medium">#{reservation.id}</TableCell>
                             <TableCell>{reservation.userEmail}</TableCell>
-                            <TableCell>
-                              {PRODUCT_NAMES[reservation.productId] || `상품 #${reservation.productId}`}
-                            </TableCell>
+                            <TableCell>{reservation.productName}</TableCell>
                             <TableCell className="text-center">{reservation.quantity}개</TableCell>
                             <TableCell>
                               <Badge variant={config.variant} className="gap-1">
@@ -665,9 +581,20 @@ function AdminContent() {
                                 year: "numeric",
                                 month: "short",
                                 day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
                               })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {reservation.status === "WAITING" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleConfirmReservation(reservation.id)}
+                                  className="gap-1"
+                                >
+                                  <CheckCircle className="h-3 w-3" />
+                                  확정
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         )
@@ -685,9 +612,5 @@ function AdminContent() {
 }
 
 export default function AdminPage() {
-  return (
-    <AuthProvider>
-      <AdminContent />
-    </AuthProvider>
-  )
+  return <AdminContent />
 }

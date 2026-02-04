@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth-context"
+import { store, type Product } from "@/lib/store"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,64 +11,19 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Package, Search, ShoppingCart, AlertCircle } from "lucide-react"
-import type { Product } from "@/lib/api"
-
-// 데모용 상품 데이터
-const DEMO_PRODUCTS: Product[] = [
-  {
-    id: 1,
-    productName: "프리미엄 무선 이어폰",
-    totalStock: 100,
-    remainStock: 45,
-    createdAt: "2026-01-15T10:00:00",
-    updatedAt: "2026-02-01T14:30:00",
-  },
-  {
-    id: 2,
-    productName: "스마트 워치 Pro",
-    totalStock: 50,
-    remainStock: 12,
-    createdAt: "2026-01-20T09:00:00",
-    updatedAt: "2026-02-02T11:00:00",
-  },
-  {
-    id: 3,
-    productName: "휴대용 블루투스 스피커",
-    totalStock: 200,
-    remainStock: 180,
-    createdAt: "2026-01-25T15:00:00",
-    updatedAt: "2026-02-03T16:00:00",
-  },
-  {
-    id: 4,
-    productName: "무선 충전 패드",
-    totalStock: 150,
-    remainStock: 0,
-    createdAt: "2026-01-28T12:00:00",
-    updatedAt: "2026-02-04T10:00:00",
-  },
-  {
-    id: 5,
-    productName: "노이즈 캔슬링 헤드폰",
-    totalStock: 80,
-    remainStock: 35,
-    createdAt: "2026-02-01T08:00:00",
-    updatedAt: "2026-02-04T09:00:00",
-  },
-  {
-    id: 6,
-    productName: "미니 프로젝터",
-    totalStock: 30,
-    remainStock: 8,
-    createdAt: "2026-02-02T14:00:00",
-    updatedAt: "2026-02-04T15:00:00",
-  },
-]
 
 function ProductsContent() {
-  const [products, setProducts] = useState<Product[]>(DEMO_PRODUCTS)
+  const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const { user } = useAuth()
+
+  useEffect(() => {
+    setProducts(store.getProducts())
+    const unsubscribe = store.subscribe(() => {
+      setProducts(store.getProducts())
+    })
+    return unsubscribe
+  }, [])
 
   const filteredProducts = products.filter((product) =>
     product.productName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -141,7 +97,7 @@ function ProductsContent() {
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">남은 수량</span>
-                        <span className={`font-semibold ${product.remainStock === 0 ? "text-destructive" : product.remainStock <= 10 ? "text-warning" : "text-foreground"}`}>
+                        <span className={`font-semibold ${product.remainStock === 0 ? "text-destructive" : product.remainStock <= 10 ? "text-orange-500" : "text-foreground"}`}>
                           {product.remainStock}개
                         </span>
                       </div>
@@ -177,9 +133,5 @@ function ProductsContent() {
 }
 
 export default function ProductsPage() {
-  return (
-    <AuthProvider>
-      <ProductsContent />
-    </AuthProvider>
-  )
+  return <ProductsContent />
 }

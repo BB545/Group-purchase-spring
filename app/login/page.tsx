@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
-import { loginUser } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,15 +24,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const token = await loginUser({ email, password })
-      // JWT에서 사용자 정보 추출 (간단한 구현)
-      // 실제로는 서버에서 사용자 정보를 함께 반환받는 것이 좋습니다
-      const payload = JSON.parse(atob(token.split(".")[1]))
-      login(token, {
-        email: payload.sub || email,
-        nickname: payload.nickname || email.split("@")[0],
-        role: payload.role || "USER",
-      })
+      login(email, password)
       toast({
         title: "로그인 성공",
         description: "환영합니다!",
@@ -84,6 +75,11 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+              <p className="font-medium mb-1">테스트 계정:</p>
+              <p>관리자: admin@example.com / admin123</p>
+              <p>사용자: user@example.com / user123</p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

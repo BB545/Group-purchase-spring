@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth-context"
+import { store, type Product } from "@/lib/store"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,69 +13,34 @@ import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { createReservation, type Product } from "@/lib/api"
 import { ArrowLeft, Package, Calendar, Loader2, Plus, Minus, ShoppingCart, AlertTriangle } from "lucide-react"
 
-// 데모용 상품 데이터
-const DEMO_PRODUCTS: Record<string, Product> = {
-  "1": {
-    id: 1,
-    productName: "프리미엄 무선 이어폰",
-    totalStock: 100,
-    remainStock: 45,
-    createdAt: "2026-01-15T10:00:00",
-    updatedAt: "2026-02-01T14:30:00",
-  },
-  "2": {
-    id: 2,
-    productName: "스마트 워치 Pro",
-    totalStock: 50,
-    remainStock: 12,
-    createdAt: "2026-01-20T09:00:00",
-    updatedAt: "2026-02-02T11:00:00",
-  },
-  "3": {
-    id: 3,
-    productName: "휴대용 블루투스 스피커",
-    totalStock: 200,
-    remainStock: 180,
-    createdAt: "2026-01-25T15:00:00",
-    updatedAt: "2026-02-03T16:00:00",
-  },
-  "4": {
-    id: 4,
-    productName: "무선 충전 패드",
-    totalStock: 150,
-    remainStock: 0,
-    createdAt: "2026-01-28T12:00:00",
-    updatedAt: "2026-02-04T10:00:00",
-  },
-  "5": {
-    id: 5,
-    productName: "노이즈 캔슬링 헤드폰",
-    totalStock: 80,
-    remainStock: 35,
-    createdAt: "2026-02-01T08:00:00",
-    updatedAt: "2026-02-04T09:00:00",
-  },
-  "6": {
-    id: 6,
-    productName: "미니 프로젝터",
-    totalStock: 30,
-    remainStock: 8,
-    createdAt: "2026-02-02T14:00:00",
-    updatedAt: "2026-02-04T15:00:00",
-  },
-}
-
 function ProductDetailContent({ productId }: { productId: string }) {
+  const [product, setProduct] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { user, token } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
-  const product = DEMO_PRODUCTS[productId]
+  useEffect(() => {
+    try {
+      const p = store.getProduct(parseInt(productId))
+      setProduct(p)
+    } catch {
+      setProduct(null)
+    }
+
+    const unsubscribe = store.subscribe(() => {
+      try {
+        const p = store.getProduct(parseInt(productId))
+        setProduct(p)
+      } catch {
+        setProduct(null)
+      }
+    })
+    return unsubscribe
+  }, [productId])
 
   if (!product) {
     return (
@@ -105,8 +71,8 @@ function ProductDetailContent({ productId }: { productId: string }) {
     }
   }
 
-  const handleReservation = async () => {
-    if (!user || !token) {
+  const handleReservation = () => {
+    if (!user) {
       toast({
         title: "로그인 필요",
         description: "예약하려면 먼저 로그인해주세요.",
@@ -118,7 +84,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
 
     setIsSubmitting(true)
     try {
-      await createReservation(token, product.id, quantity)
+      store.createReservation(user.email, product.id, quantity)
       toast({
         title: "예약 완료",
         description: "예약 요청이 완료되었습니다. 결제 대기 상태입니다.",
@@ -171,7 +137,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">남은 수량</p>
-                  <p className={`text-2xl font-bold ${isOutOfStock ? "text-destructive" : isLowStock ? "text-warning" : ""}`}>
+                  <p className={`text-2xl font-bold ${isOutOfStock ? "text-destructive" : isLowStock ? "text-orange-500" : ""}`}>
                     {product.remainStock}개
                   </p>
                 </div>
@@ -195,7 +161,7 @@ function ProductDetailContent({ productId }: { productId: string }) {
               </div>
 
               {isLowStock && !isOutOfStock && (
-                <div className="flex items-center gap-2 p-3 bg-warning/10 text-warning rounded-lg">
+                <div className="flex items-center gap-2 p-3 bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg">
                   <AlertTriangle className="h-4 w-4" />
                   <span className="text-sm font-medium">재고가 얼마 남지 않았습니다. 서둘러 예약하세요!</span>
                 </div>
@@ -311,9 +277,5 @@ function ProductDetailContent({ productId }: { productId: string }) {
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   
-  return (
-    <AuthProvider>
-      <ProductDetailContent productId={resolvedParams.id} />
-    </AuthProvider>
-  )
+  return <ProductDetailContent productId={resolvedParams.id} />
 }

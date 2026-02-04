@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth-context"
+import { store, type Reservation } from "@/lib/store"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,86 +36,36 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { cancelReservation, type Reservation } from "@/lib/api"
 import { ClipboardList, Package, X, Loader2, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react"
-
-// 데모용 예약 데이터
-const DEMO_RESERVATIONS: Reservation[] = [
-  {
-    id: 1,
-    userEmail: "demo@example.com",
-    productId: 1,
-    quantity: 2,
-    status: "WAITING",
-    createdAt: "2026-02-03T10:30:00",
-  },
-  {
-    id: 2,
-    userEmail: "demo@example.com",
-    productId: 2,
-    quantity: 1,
-    status: "CONFIRMED",
-    createdAt: "2026-02-02T14:00:00",
-  },
-  {
-    id: 3,
-    userEmail: "demo@example.com",
-    productId: 5,
-    quantity: 3,
-    status: "WAITING",
-    createdAt: "2026-02-01T09:15:00",
-  },
-  {
-    id: 4,
-    userEmail: "demo@example.com",
-    productId: 3,
-    quantity: 1,
-    status: "CANCELLED",
-    createdAt: "2026-01-28T16:45:00",
-  },
-]
-
-const PRODUCT_NAMES: Record<number, string> = {
-  1: "프리미엄 무선 이어폰",
-  2: "스마트 워치 Pro",
-  3: "휴대용 블루투스 스피커",
-  4: "무선 충전 패드",
-  5: "노이즈 캔슬링 헤드폰",
-  6: "미니 프로젝터",
-}
 
 const STATUS_CONFIG = {
   WAITING: {
     label: "결제 대기",
     icon: Clock,
     variant: "secondary" as const,
-    color: "text-muted-foreground",
   },
   CONFIRMED: {
     label: "확정",
     icon: CheckCircle,
     variant: "default" as const,
-    color: "text-primary",
   },
   OUT_OF_STOCK: {
     label: "재고 부족",
     icon: AlertTriangle,
     variant: "destructive" as const,
-    color: "text-destructive",
   },
   CANCELLED: {
     label: "취소됨",
     icon: XCircle,
     variant: "outline" as const,
-    color: "text-muted-foreground",
   },
 }
 
 function ReservationsContent() {
-  const [reservations, setReservations] = useState<Reservation[]>(DEMO_RESERVATIONS)
+  const [reservations, setReservations] = useState<Reservation[]>([])
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [cancellingId, setCancellingId] = useState<number | null>(null)
-  const { user, token, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -124,22 +75,27 @@ function ReservationsContent() {
     }
   }, [user, isLoading, router])
 
+  useEffect(() => {
+    if (user) {
+      setReservations(store.getMyReservations(user.email))
+      const unsubscribe = store.subscribe(() => {
+        setReservations(store.getMyReservations(user.email))
+      })
+      return unsubscribe
+    }
+  }, [user])
+
   const filteredReservations = reservations.filter((reservation) => {
     if (statusFilter === "all") return true
     return reservation.status === statusFilter
   })
 
-  const handleCancelReservation = async (reservationId: number) => {
-    if (!token) return
+  const handleCancelReservation = (reservationId: number) => {
+    if (!user) return
 
     setCancellingId(reservationId)
     try {
-      await cancelReservation(token, reservationId)
-      setReservations((prev) =>
-        prev.map((r) =>
-          r.id === reservationId ? { ...r, status: "CANCELLED" as const } : r
-        )
-      )
+      store.cancelReservation(reservationId, user.email)
       toast({
         title: "예약 취소 완료",
         description: "예약이 성공적으로 취소되었습니다.",
@@ -294,7 +250,7 @@ function ReservationsContent() {
                               href={`/products/${reservation.productId}`}
                               className="hover:underline text-primary"
                             >
-                              {PRODUCT_NAMES[reservation.productId] || `상품 #${reservation.productId}`}
+                              {reservation.productName}
                             </Link>
                           </TableCell>
                           <TableCell className="text-center">{reservation.quantity}개</TableCell>
@@ -366,9 +322,5 @@ function ReservationsContent() {
 }
 
 export default function ReservationsPage() {
-  return (
-    <AuthProvider>
-      <ReservationsContent />
-    </AuthProvider>
-  )
+  return <ReservationsContent />
 }
