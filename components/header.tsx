@@ -13,9 +13,7 @@ import {
 import { ShoppingBag, User, LogOut, Package, ClipboardList, LayoutDashboard } from "lucide-react"
 
 export function Header() {
-  console.log("[v0] Header rendering")
   const { user, logout, isLoading } = useAuth()
-  console.log("[v0] Header - user:", user, "isLoading:", isLoading)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingBag, Users, Clock, Shield, ArrowRight, Package, TrendingDown, Star } from "lucide-react"
 
 function HomePage() {
-  console.log("[v0] HomePage component rendering")
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
