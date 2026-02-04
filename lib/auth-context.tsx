@@ -20,13 +20,20 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  console.log("[v0] AuthProvider rendering")
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("currentUser")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("currentUser")
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser))
+        } catch {
+          localStorage.removeItem("currentUser")
+        }
+      }
     }
     setIsLoading(false)
   }, [])
@@ -39,7 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: foundUser.role,
     }
     setUser(authUser)
-    localStorage.setItem("currentUser", JSON.stringify(authUser))
+    if (typeof window !== "undefined") {
+      localStorage.setItem("currentUser", JSON.stringify(authUser))
+    }
   }
 
   const register = (email: string, password: string, nickname: string) => {
@@ -48,7 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem("currentUser")
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("currentUser")
+    }
   }
 
   return (
